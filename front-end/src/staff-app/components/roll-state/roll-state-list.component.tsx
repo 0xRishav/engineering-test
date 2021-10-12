@@ -15,6 +15,8 @@ export const RollStateList: React.FC<Props> = ({ stateList, size = 14, onItemCli
     if (onItemClick) {
       onItemClick(type)
     }
+
+    console.log(type)
   }
 
   return (

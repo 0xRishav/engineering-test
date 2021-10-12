@@ -5,6 +5,10 @@ export interface Person {
   photo_url?: string
 }
 
+export interface Student extends Person {
+  rollState?: "unmark" | "present" | "absent" | "late"
+}
+
 export const PersonHelper = {
   getFullName: (p: Person) => `${p.first_name} ${p.last_name}`,
 }

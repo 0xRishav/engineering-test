@@ -1,14 +1,25 @@
-import React, { useState } from "react"
-import { RolllStateType } from "shared/models/roll"
+import React, { useEffect, useState } from "react"
+import { RolllStateType, StudentRollState, RollStateFilterType } from "shared/models/roll"
 import { RollStateIcon } from "staff-app/components/roll-state/roll-state-icon.component"
 
 interface Props {
   initialState?: RolllStateType
   size?: number
-  onStateChange?: (newState: RolllStateType) => void
+  onStateChange?: (newState: RolllStateType, studentId: number) => void
+  studentId: number
+  stateList: StudentRollState[]
+  rollStateProp: RolllStateType | null
 }
-export const RollStateSwitcher: React.FC<Props> = ({ initialState = "unmark", size = 40, onStateChange }) => {
+export const RollStateSwitcher: React.FC<Props> = ({ initialState = "unmark", size = 40, onStateChange, stateList, studentId, rollStateProp }) => {
   const [rollState, setRollState] = useState(initialState)
+
+  useEffect(() => {
+    if (rollStateProp === null) {
+      setRollState(initialState)
+    } else {
+      setRollState(rollStateProp)
+    }
+  }, [])
 
   const nextState = () => {
     const states: RolllStateType[] = ["present", "late", "absent"]
@@ -19,9 +30,10 @@ export const RollStateSwitcher: React.FC<Props> = ({ initialState = "unmark", si
 
   const onClick = () => {
     const next = nextState()
+    console.log(next)
     setRollState(next)
     if (onStateChange) {
-      onStateChange(next)
+      onStateChange(next, studentId)
     }
   }
 
