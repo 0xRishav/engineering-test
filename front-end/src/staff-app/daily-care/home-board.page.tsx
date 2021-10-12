@@ -5,35 +5,98 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { Spacing, BorderRadius, FontWeight } from "shared/styles/styles"
 import { Colors } from "shared/styles/colors"
 import { CenteredContainer } from "shared/components/centered-container/centered-container.component"
-import { Person } from "shared/models/person"
+import { Student } from "shared/models/person"
 import { useApi } from "shared/hooks/use-api"
 import { StudentListTile } from "staff-app/components/student-list-tile/student-list-tile.component"
 import { ActiveRollOverlay, ActiveRollAction } from "staff-app/components/active-roll-overlay/active-roll-overlay.component"
+import { SortDirection, SortBy } from "shared/models/sort"
+import { FaSortAlphaDown, FaSortAlphaDownAlt } from "react-icons/fa"
+import { RolllStateType, StudentRollState, RollStateFilterType } from "shared/models/roll"
+import { useStudentContext } from "contexts/student-context"
 
 export const HomeBoardPage: React.FC = () => {
   const [isRollMode, setIsRollMode] = useState(false)
-  const [getStudents, data, loadState] = useApi<{ students: Person[] }>({ url: "get-homeboard-students" })
+  const [stateList, setStateList] = useState<StudentRollState[]>([])
+  const [getStudents, data, loadState] = useApi<{ students: Student[] }>({ url: "get-homeboard-students" })
+
+  const {
+    dispatch,
+    state: { rollStateFilter, sortBy, searchInput, sortDirection, sortedAndFilteredStudents, sortedStudents },
+  } = useStudentContext()
 
   useEffect(() => {
     void getStudents()
   }, [getStudents])
 
+  useEffect(() => {
+    if (data?.students) {
+      dispatch({ type: "SET_SORTED_STUDENTS", payload: { allStudents: data.students } })
+      dispatch({ type: "SET_FILTERED_STUDENTS" })
+    }
+  }, [data, sortBy, sortDirection])
+
+  useEffect(() => {
+    dispatch({ type: "SET_FILTERED_STUDENTS" })
+  }, [searchInput, rollStateFilter])
+
+  useEffect(() => {
+    setStateList([
+      { type: "all", count: sortedStudents.length },
+      { type: "present", count: [...sortedStudents].filter((s) => s.rollState === "present").length },
+      { type: "late", count: [...sortedStudents].filter((s) => s.rollState === "late").length },
+      { type: "absent", count: [...sortedStudents].filter((s) => s.rollState === "absent").length },
+    ])
+  }, [sortedStudents])
+
+  const filterStateChangeHandler = (type: RollStateFilterType) => {
+    dispatch({ type: "SET_ROLL_STATE_FILTER", payload: { type: type } })
+  }
+
   const onToolbarAction = (action: ToolbarAction) => {
     if (action === "roll") {
       setIsRollMode(true)
+    }
+    if (action === "sort") {
+      dispatch({ type: "CHANGE_SORT_BY" })
     }
   }
 
   const onActiveRollAction = (action: ActiveRollAction) => {
     if (action === "exit") {
       setIsRollMode(false)
+      dispatch({ type: "SET_ROLL_STATE_FILTER", payload: { type: null } })
+    } else if (action === "complete") {
+      dispatch({ type: "CREATE_ROLL_SNAPSHOT", payload: { snapshot: sortedStudents } })
+      setIsRollMode(false)
     }
+  }
+
+  const studentSearchHandler = (e: React.FormEvent<HTMLInputElement>) => {
+    dispatch({ type: "SET_SEARCH_INPUT", payload: { searchInput: e.currentTarget.value } })
+  }
+
+  const sortDirectionHandler = () => {
+    dispatch({ type: "CHANGE_SORT_DIRECTION" })
+  }
+
+  const rollStateChangeHandler = (next: RolllStateType, id: number) => {
+    const index = sortedStudents.findIndex((s) => s.id === id)
+    const newStudents = [...sortedStudents]
+    newStudents[index].rollState = next
+    dispatch({ type: "SET_SORTED_STUDENTS", payload: { allStudents: [...newStudents] } })
   }
 
   return (
     <>
       <S.PageContainer>
-        <Toolbar onItemClick={onToolbarAction} />
+        <Toolbar
+          onItemClick={onToolbarAction}
+          sortBy={sortBy}
+          searchInput={searchInput}
+          studentSearchHandler={studentSearchHandler}
+          sortDirectionHandler={sortDirectionHandler}
+          sortDirection={sortDirection}
+        />
 
         {loadState === "loading" && (
           <CenteredContainer>
@@ -43,9 +106,10 @@ export const HomeBoardPage: React.FC = () => {
 
         {loadState === "loaded" && data?.students && (
           <>
-            {data.students.map((s) => (
-              <StudentListTile key={s.id} isRollMode={isRollMode} student={s} />
+            {sortedAndFilteredStudents.map((s) => (
+              <StudentListTile key={s.id} isRollMode={isRollMode} student={s} rollStateChangeHandler={rollStateChangeHandler} stateList={stateList} />
             ))}
+            {sortedAndFilteredStudents.length === 0 && <h1>No results found</h1>}
           </>
         )}
 
@@ -55,7 +119,7 @@ export const HomeBoardPage: React.FC = () => {
           </CenteredContainer>
         )}
       </S.PageContainer>
-      <ActiveRollOverlay isActive={isRollMode} onItemClick={onActiveRollAction} />
+      <ActiveRollOverlay isActive={isRollMode} onItemClick={onActiveRollAction} stateList={stateList} filterStateChangeHandler={filterStateChangeHandler} />
     </>
   )
 }
@@ -63,13 +127,24 @@ export const HomeBoardPage: React.FC = () => {
 type ToolbarAction = "roll" | "sort"
 interface ToolbarProps {
   onItemClick: (action: ToolbarAction, value?: string) => void
+  studentSearchHandler: (e: React.FormEvent<HTMLInputElement>) => void
+  searchInput: string
+  sortBy: string
+  sortDirectionHandler: () => void
+  sortDirection: SortDirection
 }
+
 const Toolbar: React.FC<ToolbarProps> = (props) => {
-  const { onItemClick } = props
+  const { onItemClick, searchInput, studentSearchHandler, sortBy, sortDirectionHandler, sortDirection } = props
   return (
     <S.ToolbarContainer>
-      <div onClick={() => onItemClick("sort")}>First Name</div>
-      <div>Search</div>
+      <S.SortContainer>
+        <S.SortTitle onClick={() => onItemClick("sort")}>{sortBy === "first_name" ? `First Name` : `Last Name`}</S.SortTitle>
+
+        <S.SortDirectionContainer onClick={sortDirectionHandler}>{sortDirection === "ASC" ? <FaSortAlphaDown /> : <FaSortAlphaDownAlt />}</S.SortDirectionContainer>
+      </S.SortContainer>
+
+      <input type="text" onChange={(e) => studentSearchHandler(e)} value={searchInput} placeholder="Search Students Here" />
       <S.Button onClick={() => onItemClick("roll")}>Start Roll</S.Button>
     </S.ToolbarContainer>
   )
@@ -81,6 +156,9 @@ const S = {
     flex-direction: column;
     width: 50%;
     margin: ${Spacing.u4} auto 140px;
+  `,
+  SortTitle: styled.div`
+    cursor: pointer;
   `,
   ToolbarContainer: styled.div`
     display: flex;
@@ -98,5 +176,14 @@ const S = {
       font-weight: ${FontWeight.strong};
       border-radius: ${BorderRadius.default};
     }
+  `,
+  SortContainer: styled.div`
+    display: flex;
+    align-item: center;
+    justify-content: space-between;
+    min-width: 15%;
+  `,
+  SortDirectionContainer: styled.div`
+    cursor: pointer;
   `,
 }

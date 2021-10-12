@@ -7,24 +7,29 @@ import { Student, PersonHelper } from "shared/models/person"
 import { RollStateSwitcher } from "staff-app/components/roll-state/roll-state-switcher.component"
 import { RolllStateType, StateList, StudentRollState } from "shared/models/roll"
 
-interface Props {
-  isRollMode?: boolean
-  student: Student
-  rollStateChangeHandler: (next: RolllStateType, id: number) => void
-  stateList: StudentRollState[]
+function getBgColor(type: RolllStateType) {
+  switch (type) {
+    case "unmark":
+      return "#fff"
+    case "present":
+      return "#13943b"
+    case "absent":
+      return "#9b9b9b"
+    case "late":
+      return "#f5a623"
+    default:
+      return "#13943b"
+  }
 }
-export const StudentListTile: React.FC<Props> = ({ isRollMode, student, rollStateChangeHandler, stateList }) => {
+
+export const ActivityStudentListTile = ({ student }: { student: Student }) => {
   return (
     <S.Container>
       <S.Avatar url={Images.avatar}></S.Avatar>
       <S.Content>
         <div>{PersonHelper.getFullName(student)}</div>
+        <S.Roll bgColor={getBgColor(student.rollState ? student.rollState : "unmark")}>{student.rollState ? student.rollState : "unmarked"}</S.Roll>
       </S.Content>
-      {isRollMode && (
-        <S.Roll>
-          <RollStateSwitcher studentId={student.id} onStateChange={rollStateChangeHandler} stateList={stateList} rollStateProp={student.rollState ? student.rollState : null} />
-        </S.Roll>
-      )}
     </S.Container>
   )
 }
@@ -55,13 +60,16 @@ const S = {
   `,
   Content: styled.div`
     flex-grow: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: ${Spacing.u2};
     color: ${Colors.dark.base};
     font-weight: ${FontWeight.strong};
   `,
-  Roll: styled.div`
-    display: flex;
-    align-items: center;
-    margin-right: ${Spacing.u4};
+  Roll: styled.div<{ bgColor: string }>`
+    padding: 0.5rem 1rem;
+    border-radius: 0.2rem;
+    background-color: ${({ bgColor }) => bgColor};
   `,
 }
