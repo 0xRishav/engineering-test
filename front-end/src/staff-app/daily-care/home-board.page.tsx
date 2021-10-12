@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react"
+import React, { useState, useEffect } from "react"
 import styled from "styled-components"
 import Button from "@material-ui/core/ButtonBase"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
@@ -12,17 +12,17 @@ import { ActiveRollOverlay, ActiveRollAction } from "staff-app/components/active
 import { SortDirection, SortBy } from "shared/models/sort"
 import { FaSortAlphaDown, FaSortAlphaDownAlt } from "react-icons/fa"
 import { RolllStateType, StudentRollState, RollStateFilterType } from "shared/models/roll"
+import { useStudentContext } from "contexts/student-context"
 
 export const HomeBoardPage: React.FC = () => {
   const [isRollMode, setIsRollMode] = useState(false)
-  const [searchInput, setSearchInput] = useState<string>("")
-  const [sortDirection, setSortDirection] = useState<SortDirection>("ASC")
-  const [sortBy, setSortBy] = useState<SortBy>("first_name")
-  const [sortedAndFilteredStudents, setSortedAndFilteredStudents] = useState<Student[]>([])
   const [stateList, setStateList] = useState<StudentRollState[]>([])
-  const [rollStateFilter, setRollStateFilter] = useState<RollStateFilterType | null>(null)
-  const [sortedStudents, setSortedStudents] = useState<Student[]>([])
   const [getStudents, data, loadState] = useApi<{ students: Student[] }>({ url: "get-homeboard-students" })
+
+  const {
+    dispatch,
+    state: { rollStateFilter, sortBy, searchInput, sortDirection, sortedAndFilteredStudents, sortedStudents },
+  } = useStudentContext()
 
   useEffect(() => {
     void getStudents()
@@ -30,16 +30,13 @@ export const HomeBoardPage: React.FC = () => {
 
   useEffect(() => {
     if (data?.students) {
-      const tempSortedStudents: Student[] = getSortedStudents(data.students)
-      setSortedStudents(tempSortedStudents)
-      setSortedAndFilteredStudents(tempSortedStudents)
+      dispatch({ type: "SET_SORTED_STUDENTS", payload: { allStudents: data.students } })
+      dispatch({ type: "SET_FILTERED_STUDENTS" })
     }
   }, [data, sortBy, sortDirection])
 
   useEffect(() => {
-    const searchedStudents = getSearchedStudents(sortedStudents, searchInput)
-    const filteredStudents = getFilteredStudents(searchedStudents, rollStateFilter)
-    setSortedAndFilteredStudents(filteredStudents)
+    dispatch({ type: "SET_FILTERED_STUDENTS" })
   }, [searchInput, rollStateFilter])
 
   useEffect(() => {
@@ -51,53 +48,8 @@ export const HomeBoardPage: React.FC = () => {
     ])
   }, [sortedStudents])
 
-  /* Function to get sorted students */
-
-  const getSortedStudents = useCallback(
-    (students: Student[]): Student[] => {
-      return sortDirection === "ASC"
-        ? [...students].sort((a, b) => {
-            if (a[sortBy] < b[sortBy]) return -1
-            if (a[sortBy] > b[sortBy]) return 1
-            return 0
-          })
-        : [...students].sort((a, b) => {
-            if (a[sortBy] > b[sortBy]) return -1
-            if (a[sortBy] < b[sortBy]) return 1
-            return 0
-          })
-    },
-    [sortBy, sortDirection]
-  )
-
-  /* Function to get filtered students */
-
-  const getFilteredStudents = useCallback(
-    (students: Student[], type: RollStateFilterType | null) => {
-      if (type && type !== "all") {
-        return [...students].filter((s) => s.rollState === type)
-      } else {
-        return students
-      }
-    },
-    [sortedStudents, rollStateFilter]
-  )
-
-  /* Function to get searched students */
-
-  const getSearchedStudents = useCallback(
-    (students: Student[], searchQuery: string) => {
-      if (searchQuery !== "") {
-        return [...students].filter((student) => (student.first_name + " " + student.last_name).toLowerCase().includes(searchInput.toLowerCase()))
-      } else {
-        return students
-      }
-    },
-    [sortedStudents, searchInput]
-  )
-
   const filterStateChangeHandler = (type: RollStateFilterType) => {
-    setRollStateFilter(type)
+    dispatch({ type: "SET_ROLL_STATE_FILTER", payload: { type: type } })
   }
 
   const onToolbarAction = (action: ToolbarAction) => {
@@ -105,30 +57,30 @@ export const HomeBoardPage: React.FC = () => {
       setIsRollMode(true)
     }
     if (action === "sort") {
-      sortBy === "first_name" ? setSortBy("last_name") : setSortBy("first_name")
+      dispatch({ type: "CHANGE_SORT_BY" })
     }
   }
 
   const onActiveRollAction = (action: ActiveRollAction) => {
     if (action === "exit") {
       setIsRollMode(false)
-      setRollStateFilter(null)
+      dispatch({ type: "SET_ROLL_STATE_FILTER", payload: { type: null } })
     }
   }
 
   const studentSearchHandler = (e: React.FormEvent<HTMLInputElement>) => {
-    setSearchInput(e.currentTarget.value)
+    dispatch({ type: "SET_SEARCH_INPUT", payload: { searchInput: e.currentTarget.value } })
   }
 
   const sortDirectionHandler = () => {
-    sortDirection === "ASC" ? setSortDirection("DESC") : setSortDirection("ASC")
+    dispatch({ type: "CHANGE_SORT_DIRECTION" })
   }
 
   const rollStateChangeHandler = (next: RolllStateType, id: number) => {
     const index = sortedStudents.findIndex((s) => s.id === id)
     const newStudents = [...sortedStudents]
     newStudents[index].rollState = next
-    setSortedStudents([...newStudents])
+    dispatch({ type: "SET_SORTED_STUDENTS", payload: { allStudents: [...newStudents] } })
   }
 
   return (

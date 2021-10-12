@@ -5,6 +5,7 @@ import "index.css"
 import * as serviceWorker from "shared/helpers/service-worker"
 import StaffApp from "staff-app/app"
 import { GlobalStyle } from "shared/styles/global-style"
+import { StudentContextProvider } from "contexts/student-context"
 
 const Home: React.FC = () => {
   return (
@@ -20,12 +21,14 @@ const Home: React.FC = () => {
 ReactDOM.render(
   <React.StrictMode>
     <GlobalStyle />
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home>Engineering Test</Home>} />
-        <Route path="staff/*" element={<StaffApp />} />
-      </Routes>
-    </BrowserRouter>
+    <StudentContextProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Home>Engineering Test</Home>} />
+          <Route path="staff/*" element={<StaffApp />} />
+        </Routes>
+      </BrowserRouter>
+    </StudentContextProvider>
   </React.StrictMode>,
   document.getElementById("root")
 )
