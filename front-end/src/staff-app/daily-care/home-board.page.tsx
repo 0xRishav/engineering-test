@@ -65,6 +65,9 @@ export const HomeBoardPage: React.FC = () => {
     if (action === "exit") {
       setIsRollMode(false)
       dispatch({ type: "SET_ROLL_STATE_FILTER", payload: { type: null } })
+    } else if (action === "complete") {
+      dispatch({ type: "CREATE_ROLL_SNAPSHOT", payload: { snapshot: sortedStudents } })
+      setIsRollMode(false)
     }
   }
 
@@ -106,6 +109,7 @@ export const HomeBoardPage: React.FC = () => {
             {sortedAndFilteredStudents.map((s) => (
               <StudentListTile key={s.id} isRollMode={isRollMode} student={s} rollStateChangeHandler={rollStateChangeHandler} stateList={stateList} />
             ))}
+            {sortedAndFilteredStudents.length === 0 && <h1>No results found</h1>}
           </>
         )}
 
